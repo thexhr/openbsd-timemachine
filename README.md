@@ -195,7 +195,7 @@ The simplest way to configure it, is to copy the example config from /usr/local/
 +backup 	/		localhost/
 ```
 
-Keep the greek letter names (alpha, beta, ...) for the backup levels.  Depending on your available backup disk size you might want to tune the number of snapshots to be retained. To make sure that rsnapshot works as expected mount your backup drive to /backup and run it once.  Check for errors and resolve them, if needed.
+Keep the Greek letter names (alpha, beta, ...) for the backup levels.  Depending on your available backup disk size you might want to tune the number of snapshots to be retained. To make sure that rsnapshot works as expected mount your backup drive to /backup and run it once.  Check for errors and resolve them, if needed.
 
 ```
 # rsnapshot -c /etc/rsnapshot.conf alpha
@@ -213,81 +213,7 @@ The [script](openbsd-timemachine-backup.sh) is quite simple and just decrypts th
 
 Upon the first call, a counter is written to the backup disk.  Every 8th run, a rsnapshot gamma backup is done, every 4th run a beta backup, and an alpha backup on all other runs.
 
-```
-# cat /root/openbsd-timemachine-backup.sh
-!/bin/sh
-
-PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
-
-MNTPOIN=/backup
-# DUID of the softraid container
-OUTER_DUID=$1
-# DUID of the disk within the decrypted container
-INNER_DUID=$2
-# Location to the file containing the passphrase
-PASSFILE=$3
-# Location to counter file
-CNTF=${MNTPOIN}/.counter
-
-# Wrong number of arguments
-if [[ -z $OUTER_DUID || -z $INNER_DUID ]]; then
-	logger -i -t error "$(basename $0): DUIDs missing. Abort"
-	exit 1
-fi
-
-if [[ -z $PASSFILE ]]; then
-	logger -i -t error "$(basename $0): No path to PASSFILE given. Abort"
-	exit 1
-else
-	if [[ ! -f $PASSFILE ]]; then
-		logger -i -t error "$(basename $0): Cannot open $PASSFILE. Abort"
-		exit 1
-	fi
-fi
-
-if [[ -n $(mount | grep ${MNTPOIN}) ]]; then
-	logger -i -t error "$(basename $0): Mount point $MNTPOIN is not empty. Abort"
-	exit 1
-fi
-
-bioctl -c C -p $PASSFILE -l ${OUTER_DUID}.a softraid0 > /dev/null || exit 1
-logger "$(basename $0): Backup disk successfully bio-attached"
-
-sync
-
-mount -o softdep,noatime ${INNER_DUID}.i $MNTPOIN || exit 1
-logger "$(basename $0): Backup disk mounted successfully to $MNTPOIN"
-
-# First backup of its kind
-if [[ ! -f ${CNTF} ]]; then
-	echo "1" > $CNTF
-fi
-
-i=$(cat $CNTF)
-if [ $((i%8)) -eq 0 ]; then
-	logger "$(basename $0): Iteration ${i}, doing a gamma backup"
-	rsnapshot -q -c /etc/rsnapshot.conf gamma
-elif [ $((i%4)) -eq 0 ]; then
-	logger "$(basename $0): Iteration ${i}, doing a beta backup"
-	rsnapshot -q -c /etc/rsnapshot.conf beta
-else
-	logger "$(basename $0): Iteration ${i}, doing an alpha backup"
-	rsnapshot -q -c /etc/rsnapshot.conf alpha
-fi
-echo $((i+=1)) > $CNTF
-
-sync
-
-umount $MNTPOIN || exit 1
-
-logger "$(basename $0): $MNTPOIN successfully unmounted"
-
-bioctl -d $INNER_DUID || exit 1
-
-logger "$(basename $0): disk successfully bio-detached"
-```
-
-Once you now connects the disk you should see a backup job running and similar output to the following in `/var/log/messages` (timestamps cut):
+Once you connect the disk you should see a backup job running and similar output to the following in `/var/log/messages` (timestamps cut):
 
 ```
 sd2 at scsibus4 targ 1 lun 0: <WD, Elements 25A1, 1018> serial.105825a214463442
@@ -303,3 +229,7 @@ root: openbsd-timemachine-backup.sh: /backup successfully unmounted
 sd3 detached
 root: openbsd-timemachine-backup.sh: disk successfully bio-detached
 ```
+
+## The fine Print
+
+Of course, this script comes without warranty.  Double check that everything works correctly and always have a second backup ready.
