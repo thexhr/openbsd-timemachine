@@ -84,3 +84,5 @@ logger "$(basename $0): $MNTPOIN successfully unmounted"
 bioctl -d $INNER_DUID || exit 1
 
 logger "$(basename $0): disk successfully bio-detached"
+
+exit $?
