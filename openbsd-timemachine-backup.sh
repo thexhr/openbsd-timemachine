@@ -54,7 +54,7 @@ logger "$(basename $0): Backup disk successfully bio-attached"
 
 sync
 
-mount -o softdep,noatime ${INNER_DUID}.i $MNTPOIN || exit 1
+mount -o noatime ${INNER_DUID}.i $MNTPOIN || exit 1
 logger "$(basename $0): Backup disk mounted successfully to $MNTPOIN"
 
 # First backup of its kind
