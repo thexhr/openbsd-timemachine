@@ -205,19 +205,11 @@ Keep the Greek letter names (alpha, beta, ...) for the backup levels.  Depending
 
 If rsnapshot works as expected we can now configure the script that runs it automatically.
 
-## The backup script
+## Connect the disk to start a Backup
 
-The [script](openbsd-timemachine-backup.sh) is quite simple and just decrypts the disk, mounts it and runs rsnapshot to create an incremental backup.  **If you followed the steps above, there is no need to change anything.**
+The [script](openbsd-timemachine-backup.sh) is quite simple and just decrypts the disk, mounts it and runs rsnapshot to create an incremental backup.
 
-In case you deviate from the steps above or want to change something, double check the following points:
-
-* To avoid nested mounts, the script uses /backup as mount point for the external device.  If you prefer another location you have to change the MNTPOIN variable at the beginning of the script and don't forget to change rsnapshot's config as well.
-* As seen above, I created the outer partition as sdXa (note the small letter 'a') and the inner partition as sdXi (note the small letter 'i').  If you chose a different partition in disklabel you have to change the bioctl and mount commands.
-* If you chose different names for rsnapshot's backup levels (so others that alpha, beta, ...) you have to modify the script accordingly.
-
-Upon the first call, a counter is written to the backup disk.  Every 8th run, a rsnapshot gamma backup is done, every 4th run a beta backup, and an alpha backup on all other runs.
-
-Once you connect the disk you should see a backup job running and similar output to the following in `/var/log/messages` (timestamps cut):
+Once you connect the disk you should see a backup job running and similar output to the following in `/var/log/messages` (timestamps cut). Upon the first call, a counter is written to the backup disk.  Every 8th run, a rsnapshot gamma backup is done, every 4th run a beta backup, and an alpha backup on all other runs.
 
 ```
 sd2 at scsibus4 targ 1 lun 0: <WD, Elements 25A1, 1018> serial.105825a214463442
@@ -228,11 +220,19 @@ sd3 at scsibus3 targ 2 lun 0: <OPENBSD, SR CRYPTO, 006>
 sd3: 2097095MB, 512 bytes/sector, 4294852016 sectors
 root: openbsd-timemachine-backup.sh: Backup disk mounted successfully to /backup
 root: openbsd-timemachine-backup.sh: Iteration 54, doing an alpha backup
-rsnapshot[6708]: WARNING: /usr/local/bin/rsnapshot -q -c /etc/rsnapshot.conf alpha: completed, but with some warnings
 root: openbsd-timemachine-backup.sh: /backup successfully unmounted
 sd3 detached
 root: openbsd-timemachine-backup.sh: disk successfully bio-detached
 ```
+
+### Modifying the script
+
+Don't do it.  Really, don't.  If you really want to change something, double check the following points:
+
+* To avoid nested mounts, the script uses /backup as mount point for the external device.  If you prefer another location you have to change the MNTPOIN variable at the beginning of the script and don't forget to change rsnapshot's config as well.
+* As seen above, I created the outer partition as sdXa (note the small letter 'a') and the inner partition as sdXi (note the small letter 'i').  If you chose a different partition in disklabel you have to change the bioctl and mount commands.
+* If you chose different names for rsnapshot's backup levels (so others that alpha, beta, ...) you have to modify the script accordingly.
+
 
 ## The fine Print
 
