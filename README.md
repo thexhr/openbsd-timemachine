@@ -1,19 +1,19 @@
 # Time Machine like Backups on OpenBSD
 
-[Time Machine](https://en.wikipedia.org/wiki/Time_Machine_(macOS)) is a backup software by Apple, part of macOS allowing easy and foolproof backups.  In a nutshell, it creates incremental backups on a storage medium of your choice and you can access the data either with a graphical client or directly via file system tools.  I especially like that you only have to plug in an external USB drive which is immediately recognized, the backup starts and the drive is unmounted as soon as the backup is done. Since Time Machine is Apple only and I use OpenBSD on all my personal machines, I decided to write my own Time Machine like solution.
+[Time Machine](https://en.wikipedia.org/wiki/Time_Machine_(macOS)) is a backup software developed by Apple and a part of macOS.  It allows easy and foolproof backups.  In a nutshell, it creates incremental backups on a storage medium of your choice and you can access the data either with a graphical client or directly via file system tools.  I especially like that you only have to plug in an external USB drive which is immediately recognized, the backup starts and the drive is unmounted as soon as the backup is done. Since Time Machine is Apple only and I use OpenBSD on all my personal machines, I decided to write my own Time Machine like solution.
 
 ## Goals of my Solution
 
 * Automatic, incremental backups as soon as an external USB device is connected
 * Automatic unmounting as soon as the backup is finished
-* All data is fully encrypted
+* Data is fully encrypted
 * No proprietary backup format, just plain files on disk
 
-Turns out, I can solve the goals easily with mostly base software and one program from ports.
+Turns out, I can solve these goals easily with base software and one program from ports.
 
 ## Prepare the external Storage
 
-At first, we need to manually format the disk and create an encrypted file system on top.  Plug in the disk and find the correct device name by looking at the dmesg output:
+At first, we need to manually format the disk and create an encrypted file system on top.  I am using a simple external USB hard drive here.  Plug in the disk and find the correct device name by looking at the dmesg output:
 
 
 ```
@@ -24,7 +24,7 @@ sd2 at scsibus4 targ 1 lun 0: <Kingston, DataTraveler 2.0, PMAP> removable seria
 sd2: 7640MB, 512 bytes/sector, 15646720 sectors
 ```
 
-In this example it's sd2.  Now we need to format the disk and create an encrypted file system on top of it.
+In this example it's `sd2`.  Now we need to format the disk and create an encrypted file system on top of it.
 
 ```
 # fdisk -iy sd2
@@ -47,7 +47,7 @@ Upon completion you should see a correct disklabel on the disk.
 type: SCSI
 disk: SCSI disk
 label: DataTraveler 2.0
-duid: f5a87db156d32c6f
+duid: f5a87db156d32c6f      <- the value here will be used later
 flags:
 bytes/sector: 512
 sectors/track: 63
@@ -65,23 +65,24 @@ drivedata: 0
   c:         15646720                0  unused
 ```
 
-Since the disk is later controlled by a script we cannot use a passphrase here, we need to store the decryption password in a file.  Use the tool of your choice to generate a strong password and store it in a file. To match the passphrase and the disk, name the file after the disks duid (can been seen in disklabel's output above).  As last step, set the file's permission to 600 so that only the owner can access it.  Otherwise, bioctl complains about wrong permissions.
+Since the disk is later controlled by a script we cannot use a passphrase for encryption, we need to store the decryption password in a file.  Use the tool of your choice to generate a strong password and store it in a file. To match the passphrase and the disk, name the file after the disks `duid` (can been seen in disklabel's output above).  As last step, set the file's permission to 600 so that only `root` can access it.  Otherwise, bioctl complains about wrong permissions.
 
-Make sure that you save the file in a secure location on your machine. In my case it's stored in /root and owned by the root user.  Further, write the generated password somewhere down in case you need to access your backup disk without (!) having access to your machine!  You could print it on a piece of paper and store it somewhere safe.
+Save the file under `/root`.  Further, write the generated password somewhere down in case you need to access your backup disk without (!) having access to your machine!  You could print it on a piece of paper and store it somewhere safe.
 
 ```
-# pwgen 60 | head -1 > f5a87db156d32c6f.pw
+# pwgen 60 | head -1 > /root/f5a87db156d32c6f.pw
 
-# cat f5a87db156d32c6f.pw
+# cat /root/f5a87db156d32c6f.pw
 cI5LddxeQDqJ1kYsh2jFy7lXIldh2ifURYrYKfeDCOwCaZ6U6xw4HNgDx6v7
 
-# chmod 600 f5a87db156d32c6f.pw
+# chmod 600 /root/f5a87db156d32c6f.pw
+# chown root:wheel /root/f5a87db156d32c6f.pw
 ```
 
 Now we need to create an encrypted diskabel within the previous one using the file's content as passphrase:
 
 ```
-# bioctl -c C -r auto -p f5a87db156d32c6f.pw -l /dev/sd2a softraid0 
+# bioctl -c C -r auto -p /root/f5a87db156d32c6f.pw -l /dev/sd2a softraid0
 softraid0: CRYPTO volume attached as sd3
 
 # disklabel -E sd3
@@ -117,15 +118,15 @@ drivedata: 0
   i:         15630624                0  4.2BSD   2048 16384 12960
 ```
 
-To double test that everything works as designed, detach and re-attach the disk:
+To double check that everything works as designed, detach and re-attach the disk:
 
 ```
 # bioctl -d sd3
-# bioctl -c C -p f5a87db156d32c6f.pw -l /dev/sd2a softraid0
+# bioctl -c C -p /root/f5a87db156d32c6f.pw -l /dev/sd2a softraid0
 softraid0: CRYPTO volume attached as sd3
 ```
 
-Now we create a file system where the backups will be stored.  Using the -O 2 option we can force newfs to create a FFS2 file system.
+Now we create a file system where the backups will be stored.  Using the -O 2 option we force `newfs` to create a FFS2 file system.
 
 ```
 # newfs -O 2 /dev/rsd3i
@@ -139,7 +140,7 @@ super-block backups (for fsck -b #) at:
 
 The external disk is now ready to be used.
 
-## Recognize the disk upon Connection
+## Recognize the disk upon connection
 
 Now, we make sure that the disk is recognized by the system as soon as it's connected.  This can be easily done with [hotplugd](https://man.openbsd.org/hotplugd).  To identify the disk we look at the disklabel of each attached disk and run a script as soon as it's connected.
 
@@ -164,10 +165,10 @@ case $DEVCLASS in
 esac
 ```
 
-So what does the script above? It is called by hotplugd every time a device is attached.  It checks if a disk is attached (DEVCLASS is 2) and then get the disk's duid from disklabel.  If the duid matches the on from the backup disk (f5a87db156d32c6f in our case), it starts a script called /root/openbsd-timemachine-backup.sh.  The script gets three parameters:
+So what does the script above? It is called by hotplugd every time a device is attached.  It checks if a disk is attached (DEVCLASS is 2) and then get the disk's duid from disklabel.  If the duid matches the on from the backup disk (f5a87db156d32c6f in our case), it starts a script called `/root/openbsd-timemachine-backup.sh`.  The script gets three parameters:
 
-* The duid of the USB disk
-* The duid of the encrypted disklabel within the first one
+* The duid of the just connected, still encrypted USB disk
+* The duid of the decrypted disklabel
 * Full path to the file with the passphrase
 
 It also logs some information to syslog to make you aware that a backup disk is connected.
@@ -198,6 +199,7 @@ The simplest way to configure it, is to copy the example config from /usr/local/
 Keep the Greek letter names (alpha, beta, ...) for the backup levels.  Depending on your available backup disk size you might want to tune the number of snapshots to be retained. To make sure that rsnapshot works as expected mount your backup drive to /backup and run it once.  Check for errors and resolve them, if needed.
 
 ```
+# mkdir /backup
 # rsnapshot -c /etc/rsnapshot.conf alpha
 ```
 
@@ -205,7 +207,7 @@ If rsnapshot works as expected we can now configure the script that runs it auto
 
 ## The backup script
 
-The [script](openbsd-timemachine-backup.sh) is quite simple and just decrypts the disk, mounts it and runs rsnapshot to create an incremental backup.  You should not need to change something, however, double check the following points:
+The [script](openbsd-timemachine-backup.sh) is quite simple and just decrypts the disk, mounts it and runs rsnapshot to create an incremental backup.  **You should not need to change something**, however, double check the following points:
 
 * To avoid nested mounts, the script uses /backup as mount point for the external device.  If you prefer another location you have to change the MNTPOIN variable at the beginning of the script and don't forget to change rsnapshot's config as well.
 * As seen above, I created the outer partition as sdXa (note the small letter 'a') and the inner partition as sdXi (note the small letter 'i').  If you chose a different partition in disklabel you have to change the bioctl and mount commands.
@@ -233,3 +235,6 @@ root: openbsd-timemachine-backup.sh: disk successfully bio-detached
 ## The fine Print
 
 Of course, this script comes without warranty.  Double check that everything works correctly and always have a second backup ready.
+
+## License
+The script was written by Matthias Schmidt and is licensed under the ISC license.
