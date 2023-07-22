@@ -207,7 +207,9 @@ If rsnapshot works as expected we can now configure the script that runs it auto
 
 ## The backup script
 
-The [script](openbsd-timemachine-backup.sh) is quite simple and just decrypts the disk, mounts it and runs rsnapshot to create an incremental backup.  **You should not need to change something**, however, double check the following points:
+The [script](openbsd-timemachine-backup.sh) is quite simple and just decrypts the disk, mounts it and runs rsnapshot to create an incremental backup.  **If you followed the steps above, there is no need to change anything.**
+
+In case you deviate from the steps above or want to change something, double check the following points:
 
 * To avoid nested mounts, the script uses /backup as mount point for the external device.  If you prefer another location you have to change the MNTPOIN variable at the beginning of the script and don't forget to change rsnapshot's config as well.
 * As seen above, I created the outer partition as sdXa (note the small letter 'a') and the inner partition as sdXi (note the small letter 'i').  If you chose a different partition in disklabel you have to change the bioctl and mount commands.
