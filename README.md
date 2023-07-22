@@ -70,10 +70,10 @@ Since the disk is later controlled by a script we cannot use a passphrase for en
 Save the file under `/root`.  Further, write the generated password somewhere down in case you need to access your backup disk without (!) having access to your machine!  You could print it on a piece of paper and store it somewhere safe.
 
 ```
-# pwgen 60 | head -1 > /root/f5a87db156d32c6f.pw
+# openssl rand -hex 60 > /root/f5a87db156d32c6f.pw
 
 # cat /root/f5a87db156d32c6f.pw
-cI5LddxeQDqJ1kYsh2jFy7lXIldh2ifURYrYKfeDCOwCaZ6U6xw4HNgDx6v7
+7c52430bf63c40f4f84b1a6bb0157c1d72181cca8d2bf9e296f529a8b0ceaecb058ae99508d1d3b4...
 
 # chmod 600 /root/f5a87db156d32c6f.pw
 # chown root:wheel /root/f5a87db156d32c6f.pw
