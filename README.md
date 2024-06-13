@@ -24,7 +24,7 @@ sd2 at scsibus4 targ 1 lun 0: <Kingston, DataTraveler 2.0, PMAP> removable seria
 sd2: 7640MB, 512 bytes/sector, 15646720 sectors
 ```
 
-In this example it's `sd2`.  Now we need to format the disk and create an encrypted file system on top of it.
+In this example it's `sd2`.  Now we need to format the disk and create a RAID disklabel for an encrypted file system on top of it.
 
 ```
 # fdisk -iy sd2
@@ -33,8 +33,8 @@ Writing MBR at offset 0.
 # disklabel -E sd2
 Label editor (enter '?' for help at any prompt)
 sd2> a a
-offset: [64] 
-size: [15631181] 
+offset: [64]
+size: [15631181]
 FS type: [4.2BSD] RAID
 sd2*> w
 sd2> q
@@ -57,7 +57,7 @@ cylinders: 973
 total sectors: 15646720
 boundstart: 64
 boundend: 15631245
-drivedata: 0 
+drivedata: 0
 
 16 partitions:
 #                size           offset  fstype [fsize bsize   cpg]
@@ -79,7 +79,7 @@ Save the file under `/root`.  Further, write the generated password somewhere do
 # chown root:wheel /root/f5a87db156d32c6f.pw
 ```
 
-Now we need to create an encrypted diskabel within the previous one using the file's content as passphrase:
+Now we create an encrypted diskabel within the previous one using the file's content as passphrase:
 
 ```
 # bioctl -c C -r auto -p /root/f5a87db156d32c6f.pw -l /dev/sd2a softraid0
@@ -126,7 +126,7 @@ To double check that everything works as designed, detach and re-attach the disk
 softraid0: CRYPTO volume attached as sd3
 ```
 
-Now we create a file system where the backups will be stored.  Using the -O 2 option we force `newfs` to create a FFS2 file system.
+At last, we create a file system where the backups will be stored.  Using the -O 2 option we force `newfs` to create a FFS2 file system.
 
 ```
 # newfs -O 2 /dev/rsd3i
@@ -140,9 +140,19 @@ super-block backups (for fsck -b #) at:
 
 The external disk is now ready to be used.
 
+## Install the script
+
+Download the script or clone the repository to a location of your choice and then install the script.  For security reasons, it lives in the /root directory.  Perform the following steps as root:
+
+```
+# git clone https://github.com/thexhr/openbsd-timemachine
+# cd openbsd-timemachine
+# make install
+```
+
 ## Recognize the disk upon connection
 
-Now, we make sure that the disk is recognized by the system as soon as it's connected.  This can be easily done with [hotplugd](https://man.openbsd.org/hotplugd).  To identify the disk we look at the disklabel of each attached disk and run a script as soon as it's connected.
+Now, we make sure that the disk is recognized by the system as soon as it's connected.  This can be easily done with [hotplugd](https://man.openbsd.org/hotplugd) and a small script you see in the following.  To identify the disk we look at the disklabel of each attached disk and run a script as soon as it's connected.
 
 ```
 # cat /etc/hotplug/attach
@@ -225,7 +235,7 @@ sd3 detached
 root: openbsd-timemachine-backup.sh: disk successfully bio-detached
 ```
 
-### Modifying the script
+### Can I modify the script?
 
 Don't do it.  Really, don't.  If you really want to change something, double check the following points:
 
